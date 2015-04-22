@@ -1,7 +1,7 @@
-# Browserify ngInject
+# Browserify Incremental Plugin
 
-[![NPM](https://nodei.co/npm/browserify-nginject.png)](https://github.com/bholloway/browserify-nginject)
+[![NPM](https://nodei.co/npm/browserify-incremental-plugin.png)](https://github.com/bholloway/browserify-incremental-plugin)
 
-[![dependencies](https://david-dm.org/bholloway/browserify-nginject.svg)](https://github.com/bholloway/browserify-nginject)
+[![dependencies](https://david-dm.org/bholloway/browserify-incremental-plugin.svg)](https://github.com/bholloway/browserify-incremental-plugin)
 
-Browserify transform where explicit `@ngInject` annotation creates preminification `$inject` property.
+A simple browserify plugin for incremental compile without file watch.
