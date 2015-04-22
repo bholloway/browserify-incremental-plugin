@@ -56,11 +56,17 @@ module.exports = pluginFactory();
  * @returns {stream.Through} a through stream
  */
 function populateCache(internalCache, depsCache) {
+
+  // comparision cache is per session
+  var isTestedCache = {};
+
+  // deps stage transform
   function transform(row, encoding, done) {
     /* jshint validthis:true */
     var filename = row.file;
 
-    // set the new transformed row output
+    // set immediately
+    isTestedCache[filename] = false;
     internalCache[filename] = {
       input : fs.readFileSync(filename).toString(),
       output: {
@@ -71,24 +77,38 @@ function populateCache(internalCache, depsCache) {
       }
     };
 
-    // we need to use a getter as it is the only hook at which we can perform comparison
-    //  getters cannot be redefined so we create on first access and retain, hence the need
-    //  for the internal cache to store the value above
+    // create a getter
+    //  we need to use a getter as it is the only hook at which we can perform comparison
+    //  the value is accessed multiple times each compile cycle but is only set at the end of the cycle
+    function getter() {
+      // not found
+      var cached = internalCache[filename];
+      if (!cached) {
+        return undefined;
+      }
+      // we have already tested whether the cached value is valid and deleted it if not
+      else if (isTestedCache[filename]) {
+        return cached.output;
+      }
+      // test the input
+      else {
+        var isMatch = (cached.input === fs.readFileSync(filename).toString());
+        isTestedCache[filename] = true;
+        internalCache[filename] = isMatch && cached;
+        return getter();
+      }
+    }
+
+    // getters cannot be redefined so we create on first appearance of a given key and operate through the cache
+    //  instead of closed over variable
     if (!depsCache.hasOwnProperty(filename)) {
-      Object.defineProperty(depsCache, filename, {
-        get: function () {
-          // file read and comparison is in the order of 100us
-          var cached  = internalCache[filename];
-          var input   = fs.readFileSync(filename).toString();
-          var isMatch = (cached.input === input);
-          return isMatch ? cached.output : undefined;
-        }
-      });
+      Object.defineProperty(depsCache, filename, {get: getter});
     }
 
     // complete
     this.push(row);
     done();
   }
+
   return through.obj(transform);
 }
