@@ -1,12 +1,12 @@
 {
-  "name": "browserify-incremental",
+  "name": "browserify-incremental-plugin",
   "version": "0.0.3",
-  "description": "A browserify plugin for incremental compile without file watch",
+  "description": "A simple browserify plugin for incremental compile without file watch",
   "main": "index.js",
   "scripts": {},
   "repository": {
     "type": "git",
-    "url": "https://github.com/bholloway/browserify-incremental"
+    "url": "https://github.com/bholloway/browserify-incremental-plugin"
   },
   "keywords": [
     "browserify",
@@ -19,9 +19,9 @@
   "author": "bholloway",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/bholloway/browserify-incremental/issues"
+    "url": "https://github.com/bholloway/browserify-incremental-plugin/issues"
   },
-  "homepage": "https://github.com/bholloway/browserify-incremental",
+  "homepage": "https://github.com/bholloway/browserify-incremental-plugin",
   "dependencies": {
     "through2": "^0.6.5",
     "lodash.merge": "*"
