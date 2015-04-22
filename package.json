@@ -1,28 +1,29 @@
 {
-  "name": "browserify-anonymous-labeller",
-  "version": "0.0.1",
-  "description": "A browserify plugin that anonymises filename labels in the browser-pack",
+  "name": "browserify-incremental",
+  "version": "0.0.3",
+  "description": "A browserify plugin for incremental compile without file watch",
   "main": "index.js",
   "scripts": {},
   "repository": {
     "type": "git",
-    "url": "https://github.com/bholloway/browserify-anonymous-labeller"
+    "url": "https://github.com/bholloway/browserify-incremental"
   },
   "keywords": [
     "browserify",
     "plugin",
     "browserify-plugin",
-    "labeller",
-    "anonymous",
-    "filenames"
+    "incremental",
+    "watchify",
+    "compile"
   ],
   "author": "bholloway",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/bholloway/browserify-anonymous-labeller/issues"
+    "url": "https://github.com/bholloway/browserify-incremental/issues"
   },
-  "homepage": "https://github.com/bholloway/browserify-anonymous-labeller",
+  "homepage": "https://github.com/bholloway/browserify-incremental",
   "dependencies": {
-    "through2": "^0.6.5"
+    "through2": "^0.6.5",
+    "lodash.merge": "*"
   }
 }
