@@ -15,6 +15,9 @@ function pluginFactory(cache) {
   // ensure cache
   var internalCache = cache || {};
 
+  // create an instance of cache populater
+  var getCache = cacheFactory(internalCache);
+
   // return a closure with a getContext() sidecar
   browserifyIncremental.pluginFactory = pluginFactory;
   return browserifyIncremental;
@@ -41,7 +44,7 @@ function pluginFactory(cache) {
      */
     function setupPipeline() {
       var deps = bundler.pipeline.get('deps');
-      deps.push(populateCache(internalCache, deps._streams[0].cache));
+      deps.push(getCache(deps._streams[0].cache));
     }
   }
 }
@@ -49,66 +52,81 @@ function pluginFactory(cache) {
 module.exports = pluginFactory();
 
 /**
- * A pipeline 'deps' stage that populates cache for incremental compile.
- * Called on fully transformed row but only when there is no cache hit.
+ * A factory for a pipeline 'deps' stage.
  * @param {object} internalCache Our internal cache
- * @param {object} depsCache The cache used by module-deps
- * @returns {stream.Through} a through stream
+ * @returns {function} a closure that will get an instance for a given depsCache
  */
-function populateCache(internalCache, depsCache) {
+function cacheFactory(internalCache) {
 
-  // comparision cache is per session
+  // comparison cache will be use by getters
+  //  since getters are persistent on the internal cache then the comparison cache also needs to be persistent
   var isTestedCache = {};
 
-  // deps stage transform
-  function transform(row, encoding, done) {
-    /* jshint validthis:true */
-    var filename = row.file;
+  /**
+   * Get a pipeline 'deps' stage that populates cache for incremental compile.
+   * Called on fully transformed row but only when there is no cache hit.
+   * @param {object} depsCache The cache used by module-deps
+   * @returns {stream.Through} a through stream
+   */
+  return function getCacheSession(depsCache) {
 
-    // set immediately
-    isTestedCache[filename] = false;
-    internalCache[filename] = {
-      input : fs.readFileSync(filename).toString(),
-      output: {
-        id    : filename,
-        source: row.source,
-        deps  : merge({}, row.deps),
-        file  : filename
-      }
-    };
-
-    // create a getter
-    //  we need to use a getter as it is the only hook at which we can perform comparison
-    //  the value is accessed multiple times each compile cycle but is only set at the end of the cycle
-    function getter() {
-      // not found
-      var cached = internalCache[filename];
-      if (!cached) {
-        return undefined;
-      }
-      // we have already tested whether the cached value is valid and deleted it if not
-      else if (isTestedCache[filename]) {
-        return cached.output;
-      }
-      // test the input
-      else {
-        var isMatch = (cached.input === fs.readFileSync(filename).toString());
-        isTestedCache[filename] = true;
-        internalCache[filename] = isMatch && cached;
-        return getter();
-      }
+    // comparison cache needs to be reset every compile
+    for (var key in isTestedCache) {
+      delete isTestedCache[key];
     }
 
-    // getters cannot be redefined so we create on first appearance of a given key and operate through the cache
-    //  instead of closed over variable
-    if (!depsCache.hasOwnProperty(filename)) {
-      Object.defineProperty(depsCache, filename, {get: getter});
+    // deps stage transform
+    function transform(row, encoding, done) {
+      /* jshint validthis:true */
+      var filename = row.file;
+
+      // set immediately
+      isTestedCache[filename] = false;
+      internalCache[filename] = {
+        input : fs.readFileSync(filename).toString(),
+        output: {
+          id    : filename,
+          source: row.source,
+          deps  : merge({}, row.deps),
+          file  : filename
+        }
+      };
+
+      // create a getter
+      //  we need to use a getter as it is the only hook at which we can perform comparison
+      //  the value is accessed multiple times each compile cycle but is only set at the end of the cycle
+      //  getters will persist for the life of the internal cache so the test cache also needs to persist
+      function getter() {
+
+        // not found
+        var cached = internalCache[filename];
+        if (!cached) {
+          return undefined;
+        }
+        // we have already tested whether the cached value is valid and deleted it if not
+        else if (isTestedCache[filename]) {
+          return cached.output;
+        }
+        // test the input
+        else {
+          var isMatch = (cached.input === fs.readFileSync(filename).toString());
+          isTestedCache[filename] = true;
+          internalCache[filename] = isMatch && cached;
+          return getter();
+        }
+      }
+
+      // getters cannot be redefined so we create on first appearance of a given key and operate through the cache
+      //  instead of closed over variable
+      if (!depsCache.hasOwnProperty(filename)) {
+        Object.defineProperty(depsCache, filename, {get: getter});
+      }
+
+      // complete
+      this.push(row);
+      done();
     }
 
-    // complete
-    this.push(row);
-    done();
+    return through.obj(transform);
   }
-
-  return through.obj(transform);
 }
