@@ -18,7 +18,7 @@ function pluginFactory(cache) {
   // create an instance of cache populater
   var getCache = cacheFactory(internalCache);
 
-  // return a closure with a getContext() sidecar
+  // return a closure with a pluginFactory() sidecar
   browserifyIncremental.pluginFactory = pluginFactory;
   return browserifyIncremental;
 
@@ -109,7 +109,8 @@ function cacheFactory(internalCache) {
         }
         // test the input
         else {
-          var isMatch = (cached.input === fs.readFileSync(filename).toString());
+          var isMatch = cached.input && fs.existsSync(filename) &&
+            (cached.input === fs.readFileSync(filename).toString());
           isTestedCache[filename] = true;
           internalCache[filename] = isMatch && cached;
           return getter();
