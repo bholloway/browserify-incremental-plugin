@@ -28,8 +28,8 @@ function pluginFactory(cache) {
    * @param {object} opt An options hash
    */
   function browserifyIncremental(bundler, opt) {
-  var isValid = bundler && (typeof bundler === 'object') &&
-    (typeof bundler.on === 'function') && (typeof bundler.pipeline === 'object');
+    var isValid = bundler && (typeof bundler === 'object') &&
+      (typeof bundler.on === 'function') && (typeof bundler.pipeline === 'object');
     if (isValid) {
       bundler.on('reset', setupPipeline);
       setupPipeline();
@@ -70,9 +70,15 @@ function cacheFactory(internalCache) {
    */
   return function getCacheSession(depsCache) {
 
+    // make getters for any existing values (cache is shared across instances)
+    for (var key in internalCache) {
+      defineGetterFor(depsCache, key);
+    }
+
     // comparison cache needs to be reset every compile
+    //  setting value is quicker than delete operation by an order of magnitude
     for (var key in isTestedCache) {
-      delete isTestedCache[key];
+      isTestedCache[key] = false;
     }
 
     // deps stage transform
@@ -80,7 +86,7 @@ function cacheFactory(internalCache) {
       /* jshint validthis:true */
       var filename = row.file;
 
-      // set immediately
+      // populate the cache (overwrite)
       isTestedCache[filename] = false;
       internalCache[filename] = {
         input : fs.readFileSync(filename).toString(),
@@ -92,36 +98,8 @@ function cacheFactory(internalCache) {
         }
       };
 
-      // create a getter
-      //  we need to use a getter as it is the only hook at which we can perform comparison
-      //  the value is accessed multiple times each compile cycle but is only set at the end of the cycle
-      //  getters will persist for the life of the internal cache so the test cache also needs to persist
-      function getter() {
-
-        // not found
-        var cached = internalCache[filename];
-        if (!cached) {
-          return undefined;
-        }
-        // we have already tested whether the cached value is valid and deleted it if not
-        else if (isTestedCache[filename]) {
-          return cached.output;
-        }
-        // test the input
-        else {
-          var isMatch = cached.input && fs.existsSync(filename) &&
-            (cached.input === fs.readFileSync(filename).toString());
-          isTestedCache[filename] = true;
-          internalCache[filename] = isMatch && cached;
-          return getter();
-        }
-      }
-
-      // getters cannot be redefined so we create on first appearance of a given key and operate through the cache
-      //  instead of closed over variable
-      if (!depsCache.hasOwnProperty(filename)) {
-        Object.defineProperty(depsCache, filename, {get: getter});
-      }
+      // ensure a getter is present for this key
+      defineGetterFor(depsCache, filename);
 
       // complete
       this.push(row);
@@ -129,5 +107,43 @@ function cacheFactory(internalCache) {
     }
 
     return through.obj(transform);
+  }
+
+  /**
+   * Create getter on first appearance of a given key and operate through the persistent cache objects.
+   * However be careful not to use any closed over variables in the getter.
+   * @param {string} filename The key (file name) for the deps cache
+   */
+  function defineGetterFor(depsCache, filename) {
+
+    // instead of making the property re-definable we instead make assignment idempotent
+    if (!depsCache.hasOwnProperty(filename)) {
+      Object.defineProperty(depsCache, filename, {get: getter});
+    }
+
+    // create a getter
+    //  we need to use a getter as it is the only hook at which we can perform comparison
+    //  the value is accessed multiple times each compile cycle but is only set at the end of the cycle
+    //  getters will persist for the life of the internal cache so the test cache also needs to persist
+    function getter() {
+
+      // not found
+      var cached = internalCache[filename];
+      if (!cached) {
+        return undefined;
+      }
+      // we have already tested whether the cached value is valid and deleted it if not
+      else if (isTestedCache[filename]) {
+        return cached.output;
+      }
+      // test the input
+      else {
+        var isMatch = cached.input && fs.existsSync(filename) &&
+          (cached.input === fs.readFileSync(filename).toString());
+        isTestedCache[filename] = true;
+        internalCache[filename] = isMatch && cached;
+        return getter();
+      }
+    }
   }
 }

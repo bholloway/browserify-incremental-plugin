@@ -1,6 +1,6 @@
 {
   "name": "browserify-incremental-plugin",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A simple browserify plugin for incremental compile without file watch",
   "main": "index.js",
   "scripts": {},
