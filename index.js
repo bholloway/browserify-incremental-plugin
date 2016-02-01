@@ -85,18 +85,25 @@ function cacheFactory(internalCache) {
     function transform(row, encoding, done) {
       /* jshint validthis:true */
       var filename = row.file;
+    
+      var fileSource = null;
+      try {
+        fileSource = fs.readFileSync(filename).toString()
+      } catch (e) {}
 
-      // populate the cache (overwrite)
-      isTestedCache[filename] = false;
-      internalCache[filename] = {
-        input : fs.readFileSync(filename).toString(),
-        output: {
-          id    : filename,
-          source: row.source,
-          deps  : merge({}, row.deps),
-          file  : filename
-        }
-      };
+      if (fileSource !== null) {
+        // populate the cache (overwrite)
+        isTestedCache[filename] = false;
+        internalCache[filename] = {
+          input : fileSource,
+          output: {
+            id    : filename,
+            source: row.source,
+            deps  : merge({}, row.deps),
+            file  : filename
+          }
+        };          
+      }
 
       // ensure a getter is present for this key
       defineGetterFor(depsCache, filename);
