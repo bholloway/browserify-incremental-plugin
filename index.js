@@ -40,7 +40,6 @@ function pluginFactory(cache) {
 
     /**
      * Apply an interceptor to the pipeline.
-     * @param {object} bundler The browserify bundler instance
      */
     function setupPipeline() {
       var deps = bundler.pipeline.get('deps');
@@ -114,11 +113,12 @@ function cacheFactory(internalCache) {
     }
 
     return through.obj(transform);
-  }
+  };
 
   /**
    * Create getter on first appearance of a given key and operate through the persistent cache objects.
    * However be careful not to use any closed over variables in the getter.
+   * @param {object} depsCache The browserify cache shared across instances
    * @param {string} filename The key (file name) for the deps cache
    */
   function defineGetterFor(depsCache, filename) {
